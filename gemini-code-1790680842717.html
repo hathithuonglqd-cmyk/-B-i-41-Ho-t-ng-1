@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô Phỏng So Sánh Đột Biến DNA 3D & Bài Tập</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+        }
+        #app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+        #sidebar {
+            width: 490px;
+            background: #1e293b;
+            padding: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+            overflow-y: auto;
+            z-index: 10;
+        }
+        #canvas-container {
+            flex-grow: 1;
+            display: flex;
+            position: relative;
+        }
+        .viewport {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            border-left: 1px solid #334155;
+        }
+        .viewport-label {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #38bdf8;
+            border: 1px solid #475569;
+            z-index: 5;
+            pointer-events: none;
+        }
+        h2 { color: #38bdf8; font-size: 1.2rem; margin-top: 0; }
+        h3 { color: #f43f5e; font-size: 1.05rem; }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        button:hover { background: #2563eb; transform: translateX(4px); }
+        button.active { background: #10b981; }
+        .card {
+            background: #334155;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #38bdf8;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            background: #475569;
+            padding: 3px 7px;
+            border-radius: 6px;
+        }
+        .color-box {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .sequence-box {
+            background: #0f172a;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #38bdf8;
+            margin: 6px 0;
+            border: 1px solid #475569;
+        }
+        .question-line {
+            margin: 6px 0;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        input.answer-input {
+            width: 55px;
+            padding: 3px 6px;
+            background: #0f172a;
+            border: 1px solid #64748b;
+            color: #f8fafc;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .submit-btn {
+            background: #10b981;
+            text-align: center;
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            font-size: 0.95rem;
+        }
+        .submit-btn:hover { background: #059669; }
+        #result-box {
+            margin-top: 10px;
+            padding: 12px;
+            background: #0f172a;
+            border-radius: 8px;
+            display: none;
+            border: 1px solid #38bdf8;
+            font-size: 0.9rem;
+        }
+        .sheets-btn {
+            display: block;
+            background: #0284c7;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 12px;
+            transition: all 0.3s ease;
+        }
+        .sheets-btn:hover { background: #0284c7; opacity: 0.9; transform: translateY(-2px); }
+        .transform-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px solid #facc15;
+            color: #facc15;
+            padding: 10px 15px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+            pointer-events: none;
+            display: none;
+        }
+    </style>
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+<div id="app-container">
+    <!-- Bảng điều khiển bài tập -->
+    <div id="sidebar">
+        <h2>🧬 So Sánh Đột Biến DNA 3D</h2>
+        <p style="font-size: 0.85rem; color: #94a3b8;">Khảo sát mô hình song song, đếm nucleotide và tính tổng liên kết hydrogen.</p>
+        
+        <div class="legend">
+            <div class="legend-item"><div class="color-box" style="background:#ef4444;"></div>A</div>
+            <div class="legend-item"><div class="color-box" style="background:#a855f7;"></div>T</div>
+            <div class="legend-item"><div class="color-box" style="background:#22c55e;"></div>G</div>
+            <div class="legend-item"><div class="color-box" style="background:#3b82f6;"></div>X</div>
+        </div>
+
+        <h3>Chọn Dạng Khảo Sát:</h3>
+        <div class="btn-group">
+            <button onclick="switchAllele('wild')" id="btn-wild">1. Chỉ xem Allele Kiểu Dại</button>
+            <button onclick="switchAllele('mut1')" id="btn-mut1">2. So sánh Đột biến Mất cặp</button>
+            <button onclick="switchAllele('mut2')" id="btn-mut2">3. So sánh Đột biến Thêm cặp</button>
+            <button onclick="switchAllele('mut3')" id="btn-mut3">4. So sánh Đột biến Thay thế</button>
+        </div>
+
+        <div class="card">
+            <h3>📝 PHIẾU BÀI TẬP TƯƠNG TÁC</h3>
+            <div id="exercise-content"></div>
+            
+            <button class="submit-btn" onclick="gradeExam()">Nộp Bài & Chấm Điểm (Thang 10)</button>
+
+            <div id="result-box"></div>
+            
+            <!-- Nút chuyển sang Tab Google Sheets mới -->
+            <a href="https://docs.google.com/spreadsheets/d/1_L0qZN5zZEuPNuCx7b30Ht6znogc7qi5disfcAD9fG4/edit?pli=1&gid=663744370#gid=663744370" target="_blank" class="sheets-btn" id="sheets-link" style="display: none;">
+                📊 Mở Bảng Điểm Google Sheets (Tab mới) ↗
+            </a>
+        </div>
+    </div>
+
+    <!-- Màn hình render 3D Song Song -->
+    <div id="canvas-container">
+        <div id="viewport-left" class="viewport">
+            <div class="viewport-label" id="label-left">Gene Ban Đầu (Kiểu Dại)</div>
+        </div>
+        <div id="transform-indicator" class="transform-arrow">➔ ĐỘT BIẾN ➔</div>
+        <div id="viewport-right" class="viewport">
+            <div class="viewport-label" id="label-right">Allele Đột Biến</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const allelesData = {
+        wild: {
+            id: 'wild',
+            name: "Allele Kiểu Dại (Gene ban đầu)",
+            leftSeq:  "T - T - T - G - T - T - G - X",
+            rightSeq: "A - A - A - X - A - A - X - G",
+            pairs: [
+                {left: 'T', right: 'A'}, {left: 'T', right: 'A'}, {left: 'T', right: 'A'},
+                {left: 'G', right: 'X'}, {left: 'T', right: 'A'}, {left: 'T', right: 'A'},
+                {left: 'G', right: 'X'}, {left: 'X', right: 'G'}
+            ],
+            ans: { atCount: 5, totalAtH: 10, gxCount: 3, totalGxH: 9, totalH: 19 },
+            isSingle: true
+        },
+        mut1: {
+            id: 'mut1',
+            name: "Allele Số 1 (Dạng mất cặp nucleotide)",
+            leftSeq:  "T - T - G - T - T - G - X",
+            rightSeq: "A - A - X - A - A - X - G",
+            pairs: [
+                {left: 'T', right: 'A'}, {left: 'T', right: 'A'}, {left: 'G', right: 'X'},
+                {left: 'T', right: 'A'}, {left: 'T', right: 'A'}, {left: 'G', right: 'X'},
+                {left: 'X', right: 'G'}
+            ],
+            ans: { atCount: 4, totalAtH: 8, gxCount: 3, totalGxH: 9, totalH: 17 },
+            isSingle: false
+        },
+        mut2: {
+            id: 'mut2',
+            name: "Allele Số 2 (Dạng thêm cặp nucleotide)",
+            leftSeq:  "T - T - T - T - G - T - T - G - X",
+            rightSeq: "A - A - A - A - X - A - A - X - G",
+            pairs: [
+                {left: 'T', right: 'A'}, {left: 'T', right: 'A'}, {left: 'T', right: 'A'},
+                {left: 'T', right: 'A'}, {left: 'G', right: 'X'}, {left: 'T', right: 'A'},
+                {left: 'T', right: 'A'}, {left: 'G', right: 'X'}, {left: 'X', right: 'G'}
+            ],
+            ans: { atCount: 6, totalAtH: 12, gxCount: 3, totalGxH: 9, totalH: 21 },
+            isSingle: false
+        },
+        mut3: {
+            id: 'mut3',
+            name: "Allele Số 3 (Dạng thay thế cặp nucleotide)",
+            leftSeq:  "T - T - G - G - T - T - G - X",
+            rightSeq: "A - A - X - X - A - A - X - G",
+            pairs: [
+                {left: 'T', right: 'A'}, {left: 'T', right: 'A'}, {left: 'G', right: 'X'},
+                {left: 'G', right: 'X'}, {left: 'T', right: 'A'}, {left: 'T', right: 'A'},
+                {left: 'G', right: 'X'}, {left: 'X', right: 'G'}
+            ],
+            ans: { atCount: 4, totalAtH: 8, gxCount: 4, totalGxH: 12, totalH: 20 },
+            isSingle: false
+        }
+    };
+
+    let currentKey = 'wild';
+    let sceneLeft, cameraLeft, rendererLeft, controlsLeft, groupLeft;
+    let sceneRight, cameraRight, rendererRight, controlsRight, groupRight;
+
+    const colors = { 'A': 0xef4444, 'T': 0xa855f7, 'G': 0x22c55e, 'X': 0x3b82f6 };
+
+    function init() {
+        const containerLeft = document.getElementById('viewport-left');
+        const containerRight = document.getElementById('viewport-right');
+
+        // Setup Left Viewport
+        sceneLeft = new THREE.Scene();
+        sceneLeft.background = new THREE.Color(0x0f172a);
+        cameraLeft = new THREE.PerspectiveCamera(60, containerLeft.clientWidth / containerLeft.clientHeight, 0.1, 1000);
+        cameraLeft.position.set(0, 0, 18);
+        rendererLeft = new THREE.WebGLRenderer({ antialias: true });
+        rendererLeft.setSize(containerLeft.clientWidth, containerLeft.clientHeight);
+        containerLeft.appendChild(rendererLeft.domElement);
+        controlsLeft = new THREE.OrbitControls(cameraLeft, rendererLeft.domElement);
+        controlsLeft.enableDamping = true;
+        groupLeft = new THREE.Group();
+        sceneLeft.add(groupLeft);
+
+        // Setup Right Viewport
+        sceneRight = new THREE.Scene();
+        sceneRight.background = new THREE.Color(0x0f172a);
+        cameraRight = new THREE.PerspectiveCamera(60, containerRight.clientWidth / containerRight.clientHeight, 0.1, 1000);
+        cameraRight.position.set(0, 0, 18);
+        rendererRight = new THREE.WebGLRenderer({ antialias: true });
+        rendererRight.setSize(containerRight.clientWidth, containerRight.clientHeight);
+        containerRight.appendChild(rendererRight.domElement);
+        controlsRight = new THREE.OrbitControls(cameraRight, rendererRight.domElement);
+        controlsRight.enableDamping = true;
+        groupRight = new THREE.Group();
+        sceneRight.add(groupRight);
+
+        // Lights
+        const light1 = new THREE.AmbientLight(0xffffff, 0.8);
+        sceneLeft.add(light1);
+        const plight1 = new THREE.PointLight(0xffffff, 1.2);
+        plight1.position.set(10, 20, 15);
+        sceneLeft.add(plight1);
+
+        const light2 = new THREE.AmbientLight(0xffffff, 0.8);
+        sceneRight.add(light2);
+        const plight2 = new THREE.PointLight(0xffffff, 1.2);
+        plight2.position.set(10, 20, 15);
+        sceneRight.add(plight2);
+
+        switchAllele('wild');
+        window.addEventListener('resize', onWindowResize);
+        animate();
+    }
+
+    function switchAllele(type) {
+        currentKey = type;
+        document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + type).classList.add('active');
+
+        document.getElementById('result-box').style.display = 'none';
+        document.getElementById('sheets-link').style.display = 'none';
+
+        const data = allelesData[type];
+        const wildData = allelesData['wild'];
+
+        document.getElementById('exercise-content').innerHTML = `
+            <b style="color: #38bdf8;">${data.name}</b><br><br>
+            <div style="font-size:0.75rem; color:#cbd5e1;">Mạch 1 (5'-3'):</div>
+            <div class="sequence-box">${data.leftSeq}</div>
+            <div style="font-size:0.75rem; color:#cbd5e1;">Mạch 2 (3'-5'):</div>
+            <div class="sequence-box">${data.rightSeq}</div>
+            
+            <div class="question-line">1. Số cặp A - T = <input type="number" id="ans-at-count" class="answer-input"> cặp</div>
+            <div class="question-line">2. Số cặp G - X = <input type="number" id="ans-gx-count" class="answer-input"> cặp</div>
+            
+            <div class="question-line" style="margin-top: 8px;">3. Tổng số liên kết H của các cặp A-T: <input type="number" id="ans-at-h" class="answer-input"> liên kết</div>
+            <div class="question-line">4. Tổng số liên kết H của các cặp G-X: <input type="number" id="ans-gx-h" class="answer-input"> liên kết</div>
+            
+            <div class="question-line" style="margin-top: 10px; font-weight: bold; color: #facc15;">
+                5. TỔNG SỐ LIÊN KẾT H TOÀN MÔ HÌNH: <input type="number" id="ans-total" class="answer-input" style="width: 75px;">
+            </div>
+        `;
+
+        while(groupLeft.children.length > 0){ groupLeft.remove(groupLeft.children[0]); }
+        while(groupRight.children.length > 0){ groupRight.remove(groupRight.children[0]); }
+
+        if (data.isSingle) {
+            document.getElementById('viewport-right').style.display = 'none';
+            document.getElementById('transform-indicator').style.display = 'none';
+            document.getElementById('label-left').innerText = "Allele Kiểu Dại (Gene ban đầu)";
+            buildDNA(groupLeft, data.pairs);
+        } else {
+            document.getElementById('viewport-right').style.display = 'block';
+            document.getElementById('transform-indicator').style.display = 'block';
+            document.getElementById('label-left').innerText = "Gene Ban Đầu (Kiểu Dại)";
+            document.getElementById('label-right').innerText = data.name;
+            
+            buildDNA(groupLeft, wildData.pairs);
+            buildDNA(groupRight, data.pairs);
+        }
+    }
+
+    function buildDNA(targetGroup, pairs) {
+        const radius = 2.5;
+        const heightStep = 1.1;
+        const startY = - (pairs.length * heightStep) / 2;
+
+        pairs.forEach((pair, index) => {
+            const angle = index * 0.6;
+            const y = startY + index * heightStep;
+
+            const x1 = Math.cos(angle) * radius;
+            const z1 = Math.sin(angle) * radius;
+            const x2 = Math.cos(angle + Math.PI) * radius;
+            const z2 = Math.sin(angle + Math.PI) * radius;
+
+            createSphere(targetGroup, x1, y, z1, pair.left);
+            createSphere(targetGroup, x2, y, z2, pair.right);
+
+            let hBonds = (pair.left === 'A' || pair.right === 'A') ? 2 : 3;
+            if(pair.left === 'T' || pair.right === 'T') hBonds = 2;
+
+            drawH(targetGroup, new THREE.Vector3(x1, y, z1), new THREE.Vector3(x2, y, z2), hBonds);
+        });
+    }
+
+    function createSphere(group, x, y, z, type) {
+        const geo = new THREE.SphereGeometry(0.42, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: colors[type], roughness: 0.3 });
+        const sphere = new THREE.Mesh(geo, mat);
+        sphere.position.set(x, y, z);
+        group.add(sphere);
+    }
+
+    function drawH(group, v1, v2, count) {
+        const mat = new THREE.LineDashedMaterial({ color: 0xfacc15, dashSize: 0.15, gapSize: 0.1 });
+        for (let i = 0; i < count; i++) {
+            const offset = (i - (count - 1) / 2) * 0.22;
+            const p1 = v1.clone().add(new THREE.Vector3(0, offset, 0));
+            const p2 = v2.clone().add(new THREE.Vector3(0, offset, 0));
+            const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+            const line = new THREE.Line(geo, mat);
+            line.computeLineDistances();
+            group.add(line);
+        }
+    }
+
+    function gradeExam() {
+        const data = allelesData[currentKey];
+        const uAtCount = parseInt(document.getElementById('ans-at-count').value) || 0;
+        const uGxCount = parseInt(document.getElementById('ans-gx-count').value) || 0;
+        const uAtH = parseInt(document.getElementById('ans-at-h').value) || 0;
+        const uGxH = parseInt(document.getElementById('ans-gx-h').value) || 0;
+        const uTotal = parseInt(document.getElementById('ans-total').value) || 0;
+
+        let score = 0;
+        if (uAtCount === data.ans.atCount) score += 2;
+        if (uGxCount === data.ans.gxCount) score += 2;
+        if (uAtH === data.ans.totalAtH) score += 2;
+        if (uGxH === data.ans.totalGxH) score += 2;
+        if (uTotal === data.ans.totalH) score += 2;
+
+        let color = score >= 8 ? "#10b981" : (score >= 5 ? "#facc15" : "#f43f5e");
+
+        document.getElementById('result-box').style.display = 'block';
+        document.getElementById('sheets-link').style.display = 'block'; // Hiện nút mở tab mới khi nộp bài
+        
+        document.getElementById('result-box').innerHTML = `
+            <h3 style="margin-top:0; color:${color};">🎯 KẾT QUẢ CHẤM ĐIỂM</h3>
+            - Điểm số của bạn: <b style="font-size: 1.1rem; color:${color};">${score} / 10 điểm</b><br><br>
+            <b>Đáp án chuẩn:</b><br>
+            • Số cặp A-T: <b>${data.ans.atCount} cặp</b> | Số cặp G-X: <b>${data.ans.gxCount} cặp</b><br>
+            • Tổng số liên kết H của các cặp A-T (2 nhân ${data.ans.atCount}): <b style="color:#38bdf8;">${data.ans.totalAtH} liên kết</b><br>
+            • Tổng số liên kết H của các cặp G-X (3 nhân ${data.ans.gxCount}): <b style="color:#38bdf8;">${data.ans.totalGxH} liên kết</b><br>
+            • Tổng số liên kết H toàn mô hình: <b style="color:#facc15; font-size:1.05rem;">${data.ans.totalH} liên kết</b>
+        `;
+    }
+
+    function onWindowResize() {
+        const cL = document.getElementById('viewport-left');
+        const cR = document.getElementById('viewport-right');
+        cameraLeft.aspect = cL.clientWidth / cL.clientHeight;
+        cameraLeft.updateProjectionMatrix();
+        rendererLeft.setSize(cL.clientWidth, cL.clientHeight);
+
+        cameraRight.aspect = cR.clientWidth / cR.clientHeight;
+        cameraRight.updateProjectionMatrix();
+        rendererRight.setSize(cR.clientWidth, cR.clientHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controlsLeft.update();
+        controlsRight.update();
+        rendererLeft.render(sceneLeft, cameraLeft);
+        rendererRight.render(sceneRight, cameraRight);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
